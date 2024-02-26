@@ -21,14 +21,24 @@ LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : max_size_(num_frames),
 auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   this->latch_.lock();
 
+  auto current_time = std::chrono::system_clock::now();
+  auto duration = current_time.time_since_epoch();
+  auto current_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+
   std::vector<std::pair<frame_id_t, size_t>> vector;
   vector.reserve(this->curr_size_);
   for (auto &pair : this->node_store_) {
-
-    vector.emplace_back(pair.first, pair.second.history_.front());
+    auto k_dist = current_timestamp - pair.second.history_.back();
+    vector.emplace_back(pair.first, k_dist);
   }
 
-  std::sort(vector.begin(), vector.end(), [](const auto &lhs, const auto &rhs) { return lhs.second < rhs.second; });
+  std::sort(vector.begin(), vector.end(), [](const auto &lhs, const auto &rhs) { return lhs.second > rhs.second; });
+  for (auto &pair : vector) {
+    if (this->node_store_[pair.first].history_.size()!=this->k_){
+      pair.second = SIZE_MAX;
+    }
+  }
+  std::stable_sort(vector.begin(), vector.end(), [](const auto &lhs, const auto &rhs) { return lhs.second > rhs.second; });
 
   frame_id_t result = 0;
   for (const auto &pair : vector) {
@@ -74,6 +84,9 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, AccessType access_type) {
   } else {
     // not first access
     this->node_store_[frame_id].history_.push_front(this->current_timestamp_);
+    if(this->node_store_[frame_id].history_.size()> this->k_){
+      this->node_store_[frame_id].history_.pop_back();
+    }
   }
   this->latch_.unlock();
 }

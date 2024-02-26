@@ -13,7 +13,7 @@
 #pragma once
 
 #include <limits>
-#include <forward_list>
+#include <deque>
 #include <mutex>  // NOLINT
 #include <unordered_map>
 #include <vector>
@@ -29,7 +29,7 @@ class LRUKNode {
  private:
   /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
   // Remove maybe_unused if you start using them. Feel free to change the member variables as you want.
-   std::forward_list<size_t> history_;
+   std::deque<size_t> history_;
    size_t k_;
    frame_id_t fid_;
    bool is_evictable_{false};
