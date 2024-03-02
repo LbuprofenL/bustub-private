@@ -55,7 +55,6 @@ class DiskScheduler {
   ~DiskScheduler();
 
   /**
-   * TODO(P1): Add implementation
    *
    * @brief Schedules a request for the DiskManager to execute.
    *
@@ -64,7 +63,6 @@ class DiskScheduler {
   void Schedule(DiskRequest r);
 
   /**
-   * TODO(P1): Add implementation
    *
    * @brief Background worker thread function that processes scheduled requests.
    *

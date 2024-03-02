@@ -40,7 +40,7 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
   }
   std::stable_sort(vector.begin(), vector.end(), [](const auto &lhs, const auto &rhs) { return lhs.second > rhs.second; });
 
-  frame_id_t result = 0;
+  frame_id_t result = INVALID_PAGE_ID;
   for (const auto &pair : vector) {
     auto is_evictable = this->node_store_[pair.first].is_evictable_;
     if (is_evictable) {
@@ -49,7 +49,7 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
     }
   }
 
-  if (result == 0) {
+  if (result == INVALID_PAGE_ID) {
     this->latch_.unlock();
     return false;
   }
