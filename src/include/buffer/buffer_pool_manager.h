@@ -201,8 +201,8 @@ class BufferPoolManager {
     // This is a no-nop right now without a more complex data structure to track deallocated pages
   }
 
-  auto NewFrame(page_id_t page_id,frame_id_t *new_frame_id) -> bool;
+  auto NewFrame(page_id_t page_id, frame_id_t *new_frame_id) -> bool;
 
-  auto ResetFrame(frame_id_t frame_id)->bool;
+  auto ResetFrame(frame_id_t frame_id) -> bool;
 };
 }  // namespace bustub

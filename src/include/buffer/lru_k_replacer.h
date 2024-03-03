@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include <limits>
 #include <deque>
+#include <limits>
 #include <mutex>  // NOLINT
 #include <unordered_map>
 #include <vector>
@@ -29,12 +29,12 @@ class LRUKNode {
  private:
   /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
   // Remove maybe_unused if you start using them. Feel free to change the member variables as you want.
-   std::deque<size_t> history_;
-   size_t k_;
-   frame_id_t fid_;
-   bool is_evictable_{false};
+  std::deque<size_t> history_;
+  size_t k_;
+  frame_id_t fid_;
+  bool is_evictable_{false};
 
-   friend class LRUKReplacer;
+  friend class LRUKReplacer;
 };
 
 /**
@@ -143,13 +143,29 @@ class LRUKReplacer {
 
  private:
   // Remove maybe_unused if you start using them.
-   std::unordered_map<frame_id_t, LRUKNode> node_store_;
-   size_t current_timestamp_{0};
-   size_t curr_size_{0};
-   size_t replacer_size_{0};
-   size_t max_size_;
-   size_t k_;
-   std::mutex latch_;
+
+  // all frames
+  std::unordered_map<frame_id_t, LRUKNode> node_store_;
+  // evictble frames
+  std::unordered_map<frame_id_t, LRUKNode> evictable_node_;
+
+  size_t current_timestamp_{0};
+  // frame number in node_store
+  size_t curr_size_{0};
+  // the number of evictable frames
+  size_t replacer_size_{0};
+  size_t max_size_;
+  size_t k_;
+  std::mutex latch_;
+
+  // add frame into node_store
+  void AddFrames(frame_id_t frame_id);
+
+  // enable the frame's evictable mark
+  void EnableEvictable(frame_id_t frame_id);
+
+  // disable the frame's evictable mark
+  void DisableEvictable(frame_id_t frame_id);
 };
 
 }  // namespace bustub
