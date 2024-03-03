@@ -11,19 +11,18 @@
 //===----------------------------------------------------------------------===//
 #include <optional>
 
-#include "storage/disk/disk_scheduler.h"
 #include "common/exception.h"
 #include "storage/disk/disk_manager.h"
+#include "storage/disk/disk_scheduler.h"
 
 namespace bustub {
 
-DiskScheduler::DiskScheduler(DiskManager *disk_manager) : disk_manager_(disk_manager) {
-}
+DiskScheduler::DiskScheduler(DiskManager *disk_manager) : disk_manager_(disk_manager) {}
 
 DiskScheduler::~DiskScheduler() {
   // Put a `std::nullopt` in the queue to signal to exit the loop
   request_queue_.Put(std::nullopt);
-  for (auto &t:background_thread_){
+  for (auto &t : background_thread_) {
     if (t.has_value()) {
       t->join();
     }
@@ -40,14 +39,14 @@ void DiskScheduler::Schedule(DiskRequest r) {
 
 void DiskScheduler::StartWorkerThread() {
   auto r = request_queue_.Get();
-  if (!r.has_value()){
+  if (!r.has_value()) {
     throw ExecutionException("Empty DiskRequest");
   }
 
-  if (r->is_write_){
-    disk_manager_->WritePage(r->page_id_,r->data_);
-  } else{
-    disk_manager_->ReadPage(r->page_id_,r->data_);
+  if (r->is_write_) {
+    disk_manager_->WritePage(r->page_id_, r->data_);
+  } else {
+    disk_manager_->ReadPage(r->page_id_, r->data_);
   }
 
   r->callback_.set_value(true);

@@ -140,7 +140,7 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   // delete in replacer
   replacer_->Remove(frame_id);
 
-  //append this frame in free_list
+  // append this frame in free_list
   free_list_.push_back(frame_id);
 
   // reset page
@@ -154,7 +154,6 @@ auto BufferPoolManager::AllocatePage() -> page_id_t { return next_page_id_++; }
 
 auto BufferPoolManager::NewFrame(page_id_t page_id, frame_id_t *new_frame_id) -> bool {
   frame_id_t frame_id;
-  //TODO change to a while loop in order to enhance concurrency
   if (!free_list_.empty()) {
     frame_id = free_list_.front();
     free_list_.pop_front();
@@ -169,7 +168,7 @@ auto BufferPoolManager::NewFrame(page_id_t page_id, frame_id_t *new_frame_id) ->
       disk_scheduler_->Schedule({true, pages_[frame_id].GetData(), pages_[frame_id].GetPageId(), std::move(promise)});
       future.get();
     }
-    //remove this frame_id in page_table
+    // remove this frame_id in page_table
     page_table_.erase(pages_[frame_id].GetPageId());
   }
 
@@ -184,7 +183,6 @@ auto BufferPoolManager::NewFrame(page_id_t page_id, frame_id_t *new_frame_id) ->
 };
 
 auto BufferPoolManager::ResetFrame(frame_id_t frame_id) -> bool {
-  // TODO do some check
   pages_[frame_id].ResetMemory();
   pages_[frame_id].pin_count_ = 0;
   pages_[frame_id].page_id_ = INVALID_PAGE_ID;
