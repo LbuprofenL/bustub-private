@@ -54,7 +54,7 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
     return false;
   }
 
-  //  Remove(result);
+  // Remove(result);
   node_store_.erase(result);
   evictable_node_.erase(result);
   // only evictable frame can be removed
@@ -74,16 +74,16 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, AccessType access_type) {
 
   if (curr_size_ == 0 || node_store_.count(frame_id) == 0) {
     // first insert
-    curr_size_++;
-
-    auto new_node = LRUKNode();
-    new_node.fid_ = frame_id;
-    new_node.k_ = k_;
-
-    new_node.history_.push_front(current_timestamp_);
-
-    node_store_[frame_id] = new_node;
-    //    AddFrames(frame_id);
+    //    curr_size_++;
+    //
+    //    auto new_node = LRUKNode();
+    //    new_node.fid_ = frame_id;
+    //    new_node.k_ = k_;
+    //
+    //    new_node.history_.push_front(current_timestamp_);
+    //
+    //    node_store_[frame_id] = new_node;
+    AddFrames(frame_id);
   } else {
     // not first access
     node_store_[frame_id].history_.push_front(current_timestamp_);
@@ -105,21 +105,21 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
     return;
   }
   if (set_evictable && !is_evictable) {
-    replacer_size_++;
-    if (replacer_size_ > max_size_) {
-      throw Exception("too many evictable frames");
-    }
-    evictable_node_[frame_id] = node_store_[frame_id];
-    // EnableEvictable(frame_id);
+    //    replacer_size_++;
+    //    if (replacer_size_ > max_size_) {
+    //      throw Exception("too many evictable frames");
+    //    }
+    //    evictable_node_[frame_id] = node_store_[frame_id];
+    EnableEvictable(frame_id);
   }
 
   if (!set_evictable && is_evictable) {
-    replacer_size_--;
-
-    evictable_node_.erase(frame_id);
-    // DisableEvictable(frame_id);
+    //    replacer_size_--;
+    //
+    //    evictable_node_.erase(frame_id);
+    DisableEvictable(frame_id);
   }
-  node_store_[frame_id].is_evictable_ = set_evictable;
+  //  node_store_[frame_id].is_evictable_ = set_evictable;
 }
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {
@@ -146,7 +146,6 @@ auto LRUKReplacer::Size() -> size_t {
 }
 
 void LRUKReplacer::AddFrames(frame_id_t frame_id) {
-  std::scoped_lock<std::mutex> lck(latch_);
   curr_size_++;
 
   auto new_node = LRUKNode();
@@ -159,8 +158,6 @@ void LRUKReplacer::AddFrames(frame_id_t frame_id) {
 }
 
 void LRUKReplacer::EnableEvictable(frame_id_t frame_id) {
-  std::scoped_lock<std::mutex> lck(latch_);
-
   replacer_size_++;
   if (replacer_size_ > max_size_) {
     throw Exception("too many evictable frames");
@@ -170,8 +167,6 @@ void LRUKReplacer::EnableEvictable(frame_id_t frame_id) {
 }
 
 void LRUKReplacer::DisableEvictable(frame_id_t frame_id) {
-  std::scoped_lock<std::mutex> lck(latch_);
-
   replacer_size_--;
   node_store_[frame_id].is_evictable_ = false;
 

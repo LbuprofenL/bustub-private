@@ -58,6 +58,7 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
 auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType access_type) -> Page * {
   std::scoped_lock<std::mutex> lck(latch_);
   frame_id_t frame_id;
+  // find page
   if (page_table_.count(page_id) != 0) {
     frame_id = page_table_[page_id];
   } else {
@@ -65,7 +66,8 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
     if (!get) {
       return nullptr;
     }
-    replacer_->SetEvictable(frame_id, false);
+
+    // read page from page_id
     pages_[frame_id].RLatch();
     auto promise = disk_scheduler_->CreatePromise();
     auto future = promise.get_future();
@@ -74,7 +76,10 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
     pages_[frame_id].RUnlatch();
     page_table_[page_id] = frame_id;
   }
-  // pin the new page
+
+  // use the page
+  // go func
+  replacer_->SetEvictable(frame_id, false);
   pages_[frame_id].pin_count_++;
   replacer_->RecordAccess(frame_id, access_type);
 
@@ -83,13 +88,17 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
 
 auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unused]] AccessType access_type) -> bool {
   std::scoped_lock<std::mutex> lck(latch_);
+
+  // not in buffer pool
   if (page_table_.count(page_id) == 0) {
     return false;
   }
   auto frame_id = page_table_[page_id];
+
   if (pages_[frame_id].pin_count_ <= 0) {
     return false;
   }
+  // decrement pin_count
   pages_[frame_id].pin_count_--;
   if (pages_[frame_id].pin_count_ == 0) {
     replacer_->SetEvictable(frame_id, true);
@@ -184,8 +193,8 @@ auto BufferPoolManager::NewFrame(page_id_t page_id, frame_id_t *new_frame_id) ->
 
 auto BufferPoolManager::ResetFrame(frame_id_t frame_id) -> bool {
   pages_[frame_id].ResetMemory();
-  pages_[frame_id].pin_count_ = 0;
   pages_[frame_id].page_id_ = INVALID_PAGE_ID;
+  pages_[frame_id].pin_count_ = 0;
   pages_[frame_id].is_dirty_ = false;
   return true;
 }
