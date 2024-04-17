@@ -48,7 +48,6 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
 
   replacer_->RecordAccess(new_frame_id);
   replacer_->SetEvictable(new_frame_id, false);
-
   page_table_[new_page_id] = new_frame_id;
 
   *page_id = new_page_id;
@@ -67,21 +66,19 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
       return nullptr;
     }
 
-    // read page from page_id
-    pages_[frame_id].RLatch();
+    // read page from disk
     auto promise = disk_scheduler_->CreatePromise();
     auto future = promise.get_future();
     disk_scheduler_->Schedule({false, pages_[frame_id].GetData(), pages_[frame_id].GetPageId(), std::move(promise)});
     future.get();
-    pages_[frame_id].RUnlatch();
     page_table_[page_id] = frame_id;
   }
 
   // use the page
   // go func
+  replacer_->RecordAccess(frame_id, access_type);
   replacer_->SetEvictable(frame_id, false);
   pages_[frame_id].pin_count_++;
-  replacer_->RecordAccess(frame_id, access_type);
 
   return &pages_[frame_id];
 }
@@ -94,6 +91,7 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
     return false;
   }
   auto frame_id = page_table_[page_id];
+  pages_[frame_id].is_dirty_ |= is_dirty;
 
   if (pages_[frame_id].pin_count_ <= 0) {
     return false;
@@ -103,7 +101,6 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
   if (pages_[frame_id].pin_count_ == 0) {
     replacer_->SetEvictable(frame_id, true);
   }
-  pages_[frame_id].is_dirty_ = is_dirty;
 
   return true;
 }
@@ -117,13 +114,11 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
     return false;
   }
   auto frame_id = page_table_[page_id];
-  pages_[frame_id].WLatch();
   auto promise = disk_scheduler_->CreatePromise();
   auto future = promise.get_future();
   disk_scheduler_->Schedule({true, pages_[frame_id].GetData(), pages_[frame_id].GetPageId(), std::move(promise)});
   future.get();
   pages_[frame_id].is_dirty_ = false;
-  pages_[frame_id].WUnlatch();
 
   return true;
 }
@@ -148,7 +143,6 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   page_table_.erase(page_id);
   // delete in replacer
   replacer_->Remove(frame_id);
-
   // append this frame in free_list
   free_list_.push_back(frame_id);
 
@@ -179,14 +173,10 @@ auto BufferPoolManager::NewFrame(page_id_t page_id, frame_id_t *new_frame_id) ->
     }
     // remove this frame_id in page_table
     page_table_.erase(pages_[frame_id].GetPageId());
+    ResetFrame(frame_id);
   }
 
-  pages_[frame_id].WLatch();
-  ResetFrame(frame_id);
   pages_[frame_id].page_id_ = page_id;
-  pages_[frame_id].WUnlatch();
-  replacer_->RecordAccess(frame_id);
-
   *new_frame_id = frame_id;
   return true;
 };
