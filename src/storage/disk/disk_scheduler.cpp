@@ -16,12 +16,22 @@
 #include "storage/disk/disk_scheduler.h"
 
 namespace bustub {
+size_t num_threads = 32;  // IO型任务，线程数可以大于CPU两倍
 
-DiskScheduler::DiskScheduler(DiskManager *disk_manager) : disk_manager_(disk_manager) {}
+DiskScheduler::DiskScheduler(DiskManager *disk_manager) : disk_manager_(disk_manager) {
+  for (size_t i = 0; i <= num_threads; i++) {
+    // Initiate a threads pool
+    background_thread_.emplace_back(
+        [&] { StartWorkerThread(); });  //这里是一个匿名函数，&表示以引用形式捕获外部作用域中的变量
+  }
+}
 
 DiskScheduler::~DiskScheduler() {
   // Put a `std::nullopt` in the queue to signal to exit the loop
-  request_queue_.Put(std::nullopt);
+  for (size_t i = 0; i <= num_threads; i++) {
+    request_queue_.Put(std::nullopt);
+  }
+  cv_.notify_all();
   for (auto &t : background_thread_) {
     if (t.has_value()) {
       t->join();
@@ -31,25 +41,27 @@ DiskScheduler::~DiskScheduler() {
 
 void DiskScheduler::Schedule(DiskRequest r) {
   request_queue_.Put(std::move(r));
-
-  std::scoped_lock<std::mutex> lck(m_);
-  // Spawn the background thread
-  background_thread_.emplace_back([&] { StartWorkerThread(); });
+  cv_.notify_one();
 }
 
 void DiskScheduler::StartWorkerThread() {
-  auto r = request_queue_.Get();
-  if (!r.has_value()) {
-    throw ExecutionException("Empty DiskRequest");
-  }
+  while (true) {
+    std::unique_lock<std::mutex> lck(m_);
+    cv_.wait(lck);
 
-  if (r->is_write_) {
-    disk_manager_->WritePage(r->page_id_, r->data_);
-  } else {
-    disk_manager_->ReadPage(r->page_id_, r->data_);
-  }
+    auto r = request_queue_.Get();
+    if (r == std::nullopt) {
+      return;
+    }
 
-  r->callback_.set_value(true);
+    lck.unlock();
+    if (r->is_write_) {
+      disk_manager_->WritePage(r->page_id_, r->data_);
+    } else {
+      disk_manager_->ReadPage(r->page_id_, r->data_);
+    }
+    r->callback_.set_value(true);
+  }
 }
 
 }  // namespace bustub

@@ -91,6 +91,7 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
     return false;
   }
   auto frame_id = page_table_[page_id];
+  // attention: cannot change a dirty page to a not dirty
   pages_[frame_id].is_dirty_ |= is_dirty;
 
   if (pages_[frame_id].pin_count_ <= 0) {

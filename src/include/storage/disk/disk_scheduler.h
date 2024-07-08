@@ -90,5 +90,6 @@ class DiskScheduler {
   /** The background thread responsible for issuing scheduled requests to the disk manager. */
   std::vector<std::optional<std::thread>> background_thread_;
   std::mutex m_;
+  std::condition_variable cv_;
 };
 }  // namespace bustub
